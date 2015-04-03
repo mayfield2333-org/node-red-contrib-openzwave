@@ -19,12 +19,21 @@
 */
 
 var UUIDPREFIX = "_macaddr_";
-var HOMENAME = "_homename_";
 
 require('getmac').getMac(function(err, macAddress) {
 	if (err) throw err;
-	UUIDPREFIX = macAddress.replace(/:/gi, '');
+	UUIDPREFIX = macAddress.replace(/:/gi, '') + ".ZW.node";
 });
+
+// Build uuid like:
+//   {macaddr}.ZW.node{nodeid}
+//
+function construct_uuid(nodeid) {
+    // If Homeid is needed
+    // return UUIDPREFIX + '.' + ozwConfigNode.name + '.ZW.node' +  +
+    //		nodeid;
+    return UUIDPREFIX + nodeid;
+}
 
 
 module.exports = function(RED) {
@@ -69,10 +78,8 @@ module.exports = function(RED) {
 	function zwcallback(event, arghash) {
 		//console.log("zwcallback(event: %s, args: %j)", event, arghash);
 		// Add uuid
-		if (arghash.nodeid !== undefined && HOMENAME !== undefined)
-			arghash.uuid = UUIDPREFIX+'-' +
-					HOMENAME + '-' +
-					arghash.nodeid;
+		if (arghash.nodeid !== undefined)
+			arghash.uuid = construct_uuid(arghash.nodeid);
 
 		if (nrNodeSubscriptions.hasOwnProperty(event)) {
 			var nrNodes = nrNodeSubscriptions[event];
@@ -110,7 +117,6 @@ module.exports = function(RED) {
 	function driverReady(homeid) {
 		ozwConfigNode.homeid = homeid;
 		var homeHex = '0x'+ homeid.toString(16);
-		HOMENAME = homeHex;
 		ozwConfigNode.name = homeHex;
 		console.log('scanning Zwave network with homeid %s...', homeHex);
 		zwcallback('driver ready', ozwConfigNode, {'homeid': homeid, 'homeHex':  homeHex});
